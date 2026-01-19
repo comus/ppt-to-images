@@ -165,9 +165,17 @@
             cursor: pointer;
             font-size: 0.85em;
             margin-top: 5px;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
         }
         .copy-url:hover {
             background: #218838;
+            transform: scale(1.05);
+        }
+        .copy-url:active {
+            transform: scale(0.95);
         }
         .error-msg {
             background: #ffe6e6;
@@ -210,6 +218,26 @@
         }
         .progress-fill {
             animation: pulse 1.5s ease-in-out infinite;
+        }
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        @keyframes slideOut {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(400px);
+                opacity: 0;
+            }
         }
     </style>
 </head>
@@ -362,9 +390,14 @@
                         ` : ''}
                         ${task.status === 'completed' && task.images ? `
                             <div style="margin-top: 15px;">
-                                <p style="font-weight: bold; margin-bottom: 10px; color: #32cd32;">
-                                    ✅ ${task.status_message || '完成！'} 共 ${task.images.length} 张图片
-                                </p>
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                    <p style="font-weight: bold; color: #32cd32; margin: 0;">
+                                        ✅ ${task.status_message || '完成！'} 共 ${task.images.length} 张图片
+                                    </p>
+                                    <button class="copy-url" onclick="copyAllUrls('${task.task_id}')" style="background: #667eea;">
+                                        📋 复制全部 URL
+                                    </button>
+                                </div>
                                 <div class="images-grid">
                                     ${task.images.map(img => `
                                         <div class="image-item">
@@ -406,9 +439,109 @@
         }
 
         function copyUrl(url) {
-            navigator.clipboard.writeText(url).then(() => {
-                alert('URL 已复制到剪贴板！');
-            });
+            // 方法 1: 尝试使用 Clipboard API（现代浏览器）
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(url).then(() => {
+                    showCopySuccess();
+                }).catch(err => {
+                    console.error('Clipboard API 失败:', err);
+                    fallbackCopyUrl(url);
+                });
+            } else {
+                // 方法 2: 降级方案（兼容旧浏览器和 HTTP）
+                fallbackCopyUrl(url);
+            }
+        }
+
+        function fallbackCopyUrl(url) {
+            // 创建临时输入框
+            const textArea = document.createElement('textarea');
+            textArea.value = url;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-999999px';
+            textArea.style.top = '-999999px';
+            document.body.appendChild(textArea);
+            
+            // 选择并复制
+            textArea.focus();
+            textArea.select();
+            
+            try {
+                const successful = document.execCommand('copy');
+                if (successful) {
+                    showCopySuccess();
+                } else {
+                    showCopyError(url);
+                }
+            } catch (err) {
+                console.error('复制失败:', err);
+                showCopyError(url);
+            }
+            
+            // 清理
+            document.body.removeChild(textArea);
+        }
+
+        function showCopySuccess() {
+            // 创建临时提示
+            const toast = document.createElement('div');
+            toast.textContent = '✅ URL 已复制到剪贴板！';
+            toast.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: #32cd32;
+                color: white;
+                padding: 15px 25px;
+                border-radius: 8px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                z-index: 10000;
+                font-weight: bold;
+                animation: slideIn 0.3s ease-out;
+            `;
+            
+            document.body.appendChild(toast);
+            
+            // 3 秒后移除
+            setTimeout(() => {
+                toast.style.animation = 'slideOut 0.3s ease-out';
+                setTimeout(() => {
+                    document.body.removeChild(toast);
+                }, 300);
+            }, 3000);
+        }
+
+        function showCopyError(url) {
+            // 显示错误提示并提供手动复制选项
+            const message = `无法自动复制。请手动复制以下 URL:\n\n${url}`;
+            prompt('请手动复制 URL (Ctrl+C / Cmd+C):', url);
+        }
+
+        async function copyAllUrls(taskId) {
+            try {
+                // 获取任务详情
+                const response = await fetch(`/api/task/${taskId}`);
+                const data = await response.json();
+                
+                if (!data.success || !data.task.images) {
+                    alert('无法获取图片 URL');
+                    return;
+                }
+                
+                // 生成所有 URL 列表（每行一个）
+                const allUrls = data.task.images.map(img => img.url).join('\n');
+                
+                // 复制到剪贴板
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    await navigator.clipboard.writeText(allUrls);
+                    showCopySuccess();
+                } else {
+                    fallbackCopyUrl(allUrls);
+                }
+            } catch (err) {
+                console.error('复制全部 URL 失败:', err);
+                alert('复制失败，请重试');
+            }
         }
 
         let pollingInterval = null;
