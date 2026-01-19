@@ -151,10 +151,24 @@ class PPTExporter:
             # 第一步：转换为 PDF
             print("  → 转换为 PDF...")
             
-            # 设置环境变量以支持中文字体
+            # 设置环境变量以支持中文
             env = os.environ.copy()
-            env['LANG'] = 'zh_TW.UTF-8'
-            env['LC_ALL'] = 'zh_TW.UTF-8'
+            env['LANG'] = 'zh_CN.UTF-8'
+            env['LC_ALL'] = 'zh_CN.UTF-8'
+            env['SAL_USE_VCLPLUGIN'] = 'svp'  # 使用无头模式
+            
+            # 检查并设置字体路径
+            font_paths = [
+                '/usr/share/fonts/truetype/noto',
+                '/usr/share/fonts/truetype/wqy',
+                '/usr/share/fonts/opentype/noto',
+            ]
+            
+            font_path_str = ':'.join([p for p in font_paths if os.path.exists(p)])
+            if font_path_str:
+                env['FONTCONFIG_PATH'] = '/etc/fonts'
+                env['FONTCONFIG_FILE'] = '/etc/fonts/fonts.conf'
+                print(f"  字体路径: {font_path_str}")
             
             cmd = [
                 "soffice" if shutil.which("soffice") else "libreoffice",
@@ -165,15 +179,22 @@ class PPTExporter:
             ]
             
             try:
-                subprocess.run(
+                result = subprocess.run(
                     cmd, 
                     check=True, 
                     capture_output=True, 
-                    timeout=60,
-                    env=env  # 使用支持中文的环境变量
+                    timeout=120,  # 增加超时时间
+                    env=env
                 )
+                
+                # 打印输出以便调试
+                if result.stdout:
+                    output = result.stdout.decode('utf-8', errors='ignore')
+                    if output.strip():
+                        print(f"  LibreOffice 输出: {output}")
+                
             except subprocess.TimeoutExpired:
-                raise RuntimeError("LibreOffice 转换超时")
+                raise RuntimeError("LibreOffice 转换超时（120秒）")
             except subprocess.CalledProcessError as e:
                 error_msg = e.stderr.decode('utf-8', errors='ignore')
                 raise RuntimeError(f"LibreOffice 转换失败: {error_msg}")
