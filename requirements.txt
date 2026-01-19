@@ -1,0 +1,16 @@
+# PPT to Images - Python 依赖
+
+# PDF 转换（推荐）
+pdf2image==1.17.0
+Pillow==10.2.0
+
+# API Server
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+python-multipart==0.0.6
+
+# 可选：Aspose.Slides（功能最强大，但需要许可证）
+# aspose.slides==24.1.0
+
+# 可选：python-pptx（用于读取 PPT 信息）
+python-pptx==0.6.23

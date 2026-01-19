@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PPT to Images - 转换工具</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .upload-area:hover {
+            border-color: #764ba2;
+            background: #f8f9ff;
+        }
+        .upload-area.dragover {
+            border-color: #764ba2;
+            background: #f0f2ff;
+        }
+        input[type="file"] {
+            display: none;
+        }
+        .upload-icon {
+            font-size: 4em;
+            margin-bottom: 10px;
+        }
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: transform 0.2s;
+            margin-top: 15px;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .task-item {
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            transition: all 0.3s;
+        }
+        .task-item:hover {
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        .task-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .task-filename {
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+        .status-badge {
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: bold;
+        }
+        .status-pending { background: #ffd700; color: #000; }
+        .status-processing { background: #4169e1; color: white; }
+        .status-completed { background: #32cd32; color: white; }
+        .status-failed { background: #ff4444; color: white; }
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #f0f0f0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 0.9em;
+        }
+        .images-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .image-item {
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            overflow: hidden;
+            transition: transform 0.2s;
+        }
+        .image-item:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        .image-item img {
+            width: 100%;
+            height: 150px;
+            object-fit: cover;
+        }
+        .image-item .image-info {
+            padding: 8px;
+            background: #f8f9fa;
+            font-size: 0.9em;
+            text-align: center;
+        }
+        .copy-url {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.85em;
+            margin-top: 5px;
+        }
+        .copy-url:hover {
+            background: #218838;
+        }
+        .error-msg {
+            background: #ffe6e6;
+            color: #cc0000;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+        .folder-id {
+            font-family: 'Courier New', monospace;
+            background: #f0f0f0;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+        .status-message {
+            color: #667eea;
+            font-weight: 500;
+            font-size: 0.95em;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            font-family: 'Courier New', monospace;
+        }
+        .status-message.waiting::before {
+            content: "⏳";
+            margin-right: 8px;
+            animation: spin 2s linear infinite;
+        }
+        .status-message.saving {
+            color: #32cd32;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+        .progress-fill {
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎨 PPT to Images</h1>
+            <p>上传 PowerPoint 文件，快速转换为高清图片</p>
+        </div>
+
+        <div class="card">
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-icon">📤</div>
+                <p style="font-size: 1.2em; margin-bottom: 10px;">拖放文件到此处或点击上传</p>
+                <p style="color: #666;">支持 .ppt 和 .pptx 格式</p>
+                <input type="file" id="fileInput" accept=".ppt,.pptx">
+                <button class="btn" onclick="document.getElementById('fileInput').click()">
+                    选择文件
+                </button>
+            </div>
+            <div id="selectedFile" style="margin-top: 15px; display: none;">
+                <p>已选择: <span id="fileName"></span></p>
+                <button class="btn" onclick="uploadFile()">开始转换</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2 style="margin-bottom: 20px;">📋 转换任务</h2>
+            <div id="tasksList">
+                <p style="color: #999; text-align: center;">暂无任务</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedFile = null;
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+
+        // 拖放上传
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFileSelect(files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileSelect(e.target.files[0]);
+            }
+        });
+
+        function handleFileSelect(file) {
+            if (!file.name.endsWith('.ppt') && !file.name.endsWith('.pptx')) {
+                alert('请选择 .ppt 或 .pptx 格式的文件');
+                return;
+            }
+            selectedFile = file;
+            document.getElementById('fileName').textContent = file.name;
+            document.getElementById('selectedFile').style.display = 'block';
+        }
+
+        async function uploadFile() {
+            if (!selectedFile) return;
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+
+            try {
+                const response = await fetch('/api/convert-async', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('上传成功！任务 ID: ' + data.task_id);
+                    selectedFile = null;
+                    document.getElementById('selectedFile').style.display = 'none';
+                    fileInput.value = '';
+                    loadTasks();
+                    startPolling();
+                } else {
+                    alert('上传失败: ' + (data.error || '未知错误'));
+                }
+            } catch (error) {
+                alert('上传失败: ' + error.message);
+            }
+        }
+
+        async function loadTasks() {
+            try {
+                const response = await fetch('/api/tasks');
+                const data = await response.json();
+                
+                const tasksList = document.getElementById('tasksList');
+                
+                if (data.tasks.length === 0) {
+                    tasksList.innerHTML = '<p style="color: #999; text-align: center;">暂无任务</p>';
+                    return;
+                }
+
+                tasksList.innerHTML = data.tasks.map(task => `
+                    <div class="task-item">
+                        <div class="task-header">
+                            <span class="task-filename">📄 ${task.filename}</span>
+                            <span class="status-badge status-${task.status}">
+                                ${getStatusText(task.status)}
+                            </span>
+                        </div>
+                        <div style="color: #666; font-size: 0.9em; margin-bottom: 10px;">
+                            任务/文件夹 ID: <span class="folder-id">${task.task_id}</span>
+                        </div>
+                        ${task.status === 'processing' || task.status === 'pending' ? `
+                            <div class="status-message ${task.status_message && task.status_message.includes('✓') ? 'saving' : 'waiting'}">
+                                ${task.status_message || '处理中...'}
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: ${task.progress}%">
+                                    ${task.progress}%
+                                </div>
+                            </div>
+                            ${task.total_slides > 0 && task.current_slide > 0 ? `
+                                <div style="margin-top: 10px; padding: 10px; background: #f8f9fa; border-radius: 5px;">
+                                    <p style="color: #666; font-size: 0.9em; margin-bottom: 5px;">
+                                        <strong>进度:</strong> ${task.current_slide} / ${task.total_slides} 张
+                                    </p>
+                                    <div style="background: #e0e0e0; height: 4px; border-radius: 2px; overflow: hidden;">
+                                        <div style="background: #32cd32; height: 100%; width: ${(task.current_slide / task.total_slides * 100).toFixed(1)}%;"></div>
+                                    </div>
+                                </div>
+                            ` : task.total_slides > 0 ? `
+                                <p style="color: #666; font-size: 0.9em; margin-top: 8px;">
+                                    总共 ${task.total_slides} 张幻灯片
+                                </p>
+                            ` : ''}
+                        ` : ''}
+                        ${task.status === 'completed' && task.images ? `
+                            <div style="margin-top: 15px;">
+                                <p style="font-weight: bold; margin-bottom: 10px; color: #32cd32;">
+                                    ✅ ${task.status_message || '完成！'} 共 ${task.images.length} 张图片
+                                </p>
+                                <div class="images-grid">
+                                    ${task.images.map(img => `
+                                        <div class="image-item">
+                                            <img src="${img.url}" alt="Slide ${img.slide_number}">
+                                            <div class="image-info">
+                                                第 ${img.slide_number} 页
+                                                <button class="copy-url" onclick="copyUrl('${img.url}')">
+                                                    复制 URL
+                                                </button>
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        ` : ''}
+                        ${task.error ? `
+                            <div class="error-msg">
+                                ❌ 错误: ${task.error}
+                            </div>
+                        ` : ''}
+                        <p style="color: #999; font-size: 0.85em; margin-top: 10px;">
+                            创建时间: ${new Date(task.created_at).toLocaleString('zh-TW')}
+                        </p>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('加载任务失败:', error);
+            }
+        }
+
+        function getStatusText(status) {
+            const statusMap = {
+                'pending': '等待中',
+                'processing': '处理中',
+                'completed': '已完成',
+                'failed': '失败'
+            };
+            return statusMap[status] || status;
+        }
+
+        function copyUrl(url) {
+            navigator.clipboard.writeText(url).then(() => {
+                alert('URL 已复制到剪贴板！');
+            });
+        }
+
+        let pollingInterval = null;
+
+        function startPolling() {
+            if (pollingInterval) return;
+            pollingInterval = setInterval(() => {
+                loadTasks();
+            }, 1000); // 每 1 秒刷新一次，让进度更流畅
+        }
+
+        function stopPolling() {
+            if (pollingInterval) {
+                clearInterval(pollingInterval);
+                pollingInterval = null;
+            }
+        }
+
+        // 页面加载时加载任务列表
+        loadTasks();
+        startPolling();
+    </script>
+</body>
+</html>

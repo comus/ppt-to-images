@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+
+# Virtual Environment
+venv/
+env/
+ENV/
+
+# Output directories
+output/
+images/
+processed/
+high_quality/
+custom_size/
+batch_output/
+all_images/
+
+# Test files
+*.ppt
+*.pptx
+!sample.pptx  # 如果有示例文件
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Temporary files
+tmp/
+temp/
+*.tmp
