@@ -468,11 +468,10 @@ async def convert_ppt_sync(
             prefix="slide"
         )
         
-        base_url = "http://localhost:4000"
         image_urls = [
             {
                 "slide_number": i + 1,
-                "url": f"{base_url}/images/{folder_id}/{os.path.basename(img_path)}",
+                "url": f"{API_BASE_URL}/images/{folder_id}/{os.path.basename(img_path)}",
                 "filename": os.path.basename(img_path)
             }
             for i, img_path in enumerate(image_files)
